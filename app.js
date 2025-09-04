@@ -10,6 +10,9 @@ const path = require("path");
 // Définition de l'encodeur JSON ==> Extended=true autorise l'encodage d'objet complexe
 app.use(express.urlencoded({ extended: true }))
 
+// Ajout express-validator
+const { body, validationResult } = require('express-validator')
+
 const cities = ['Nantes', 'Paris', 'Quimper']
 
 
@@ -44,6 +47,7 @@ app.use((req, res, next) => {
     );
     next();
 });
+
 // On laisse la route par défaut en 1er
 app.get('/', (req, res) => {
     console.log("Route par défaut");
@@ -56,10 +60,26 @@ app.get('/cities', (req, res) => {
     res.render('cities', { cities: cities })
 })
 
-app.post('/cities', (req, res) => {
-    cities.push(req.body.city)
-    res.redirect('/cities')
-})
+// Modification de la méthode pour ajouter les contraintes de validation sur
+// le champ 'city'
+app.post('/cities',
+    body('city')
+        .isLength({ min: 3 })
+        .withMessage('City name must be at least 3 characters long'),
+
+    // Routage requête en encapsulant les erreurs éventuelles
+    (req, res) => {
+        const errors = validationResult(req)
+        if (!errors.isEmpty()) {
+            return res.status(422).render('cities.ejs', {
+                errors: errors.array(),
+                cities: cities,
+                city: req.body.city
+            })
+        }
+        cities.push(req.body.city)
+        res.redirect('/cities')
+    })
 
 // Route vers une ville spécifique selon son id
 app.get('/cities/:id', (req, res, next) => {
