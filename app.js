@@ -38,9 +38,7 @@ client.connect()
     });
 
 
-
 const cities = ['Nantes', 'Paris', 'Quimper']
-
 
 // Configuration du moteur de vue
 app.set("view engine", "ejs");
@@ -86,9 +84,14 @@ app.get('/cities', (req, res) => {
         .find()
         .toArray()
         .then((cities) => {
+
             //On redirige vers la page cities/index.ejs en passant en paramètre la liste de villes
             res.render('cities', { cities: cities })
         })
+})
+
+app.get('/cities/create', (req, res) => {
+    res.render('cities/create')
 })
 
 // Modification de la méthode pour ajouter les contraintes de validation sur
@@ -97,27 +100,114 @@ app.post('/cities',
     body('city')
         .isLength({ min: 3 })
         .withMessage('City name must be at least 3 characters long'),
-
     // Routage requête en encapsulant les erreurs éventuelles
-    (req, res) => {
+    // On transforme en requête asynchrone pour prendre en compte les délais de
+    // connexion vers la base de données
+    async (req, res) => {
         const errors = validationResult(req)
         if (!errors.isEmpty()) {
-            return res.status(422).render('cities.ejs', {
+            return res.status(422).render('cities/create', {
                 errors: errors.array(),
-                cities: cities,
                 city: req.body.city
             })
         }
-        cities.push(req.body.city)
+        //on remplace le l'ajout par un inserte sur la base
+        await db.collection('cities').insertOne({
+            name: req.body.city,
+            uuid: uuidv4()
+        })
         res.redirect('/cities')
-    })
-
-// Route vers une ville spécifique selon son id
-app.get('/cities/:id', (req, res, next) => {
-    if (1 > req.params.id || req.params.id > cities.length) {
-        return res.status(404).send('Error: No city found')
     }
-    res.send(cities[req.params.id - 1])
+)
+
+// Route vers une ville spécifique selon son idc
+// On modifie la méthode findOneByID pour recevoir les données à partir de lUUID.
+app.get('/cities/:uuid', (req, res, next) => {
+    db.collection('cities').findOne({ uuid: req.params.uuid }).then((city) => {
+        if (city) {
+            res.render('cities/city', { city: city })
+        } else {
+            res.status(404).send('Error: No city found')
+        }
+    })
+})
+
+
+// Mise à jour d'un UUID ==> formulaire de mise à jour
+app.get('/cities/:uuid/update', (req, res) => {
+    db.collection('cities').findOne({ uuid: req.params.uuid }).then((city) => {
+        if (city) {
+            res.render('cities/update.ejs', { city: city })
+        } else {
+            res.status(404).send('Error: No city found')
+        }
+    })
+})
+
+// Mise à jour d'un UUID ==> traitement du formulaire et update de la base
+// app.post('/cities',
+//     body('city')
+//         .isLength({ min: 3 })
+//         .withMessage('City name must be at least 3 characters long'),
+//     async (req, res) => {
+//         const errors = validationResult(req)
+//         if (!errors.isEmpty()) {
+//             return res.status(422).render('cities/update.ejs', {
+//                 errors: errors.array(),
+
+//                 city: {
+//                     name: req.body.city,
+//                     uuid: req.params.uuid
+//                 }
+//             })
+//         }
+//         await db.collection('cities').updateOne({ uuid: req.params.uuid }, {
+//             $set: { name: req.body.city }
+//         })
+//         res.redirect('/cities')
+//     }
+// )
+
+app.get('/cities/:uuid/update', (req, res) => {
+    db.collection('cities').findOne({ uuid: req.params.uuid }).then((city) => {
+        if (city) {
+            res.render('cities/update', { city: city })
+        } else {
+            res.status(404).send('Error: No city found')
+        }
+    })
+})
+// Suppression d'un UUID
+app.post('/cities/:uuid/update',
+    body('city')
+        .isLength({ min: 3 })
+        .withMessage('City name must be at least 3 characters long'),
+    async (req, res) => {
+        const errors = validationResult(req)
+        if (!errors.isEmpty()) {
+            return res.status(422).render('cities/update.ejs', {
+                errors: errors.array(),
+                city: {
+                    name: req.body.city,
+                    uuid: req.params.uuid
+                }
+            })
+        }
+        await db.collection('cities').updateOne({ uuid: req.params.uuid }, {
+            $set: { name: req.body.city }
+        })
+        res.redirect('/cities')
+    }
+)
+
+app.post('/cities/:uuid/delete', async (req, res, next) => {
+    await db.collection('cities').deleteOne({ uuid: req.params.uuid }).then((response) => {
+        if (response.deletedCount === 1) {
+            res.redirect('/cities')
+        } else {
+            res.status(404).send('Error: No city found')
+        }
+    })
 })
 
 // Middleware captant l'erreur et affichant une page 404
