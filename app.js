@@ -37,6 +37,18 @@ client.connect()
         console.log('Error connecting to server:', err);
     });
 
+// Instanciation de mongoose
+const mongoose = require('mongoose');
+
+// Connexion avec MongoDB
+mongoose.connect('mongodb://127.0.0.1:27017/test').then(() => {
+    console.log('Connected to MongoDB');
+}).catch((err) => {
+    console.log('Error connecting to MongoDB:', err);
+});
+
+// Création du modèle City
+const City = mongoose.model('City', { name: String, uuid: String });
 
 const cities = ['Nantes', 'Paris', 'Quimper']
 
@@ -79,15 +91,11 @@ app.get('/', (req, res) => {
 })
 
 // Route vers la liste de villes
+// Récupération des villes grâce à Mongoose
 app.get('/cities', (req, res) => {
-    db.collection('cities')
-        .find()
-        .toArray()
-        .then((cities) => {
-
-            //On redirige vers la page cities/index.ejs en passant en paramètre la liste de villes
-            res.render('cities', { cities: cities })
-        })
+    City.find().then((cities) => {
+        res.render('cities.ejs', { cities: cities })
+    })
 })
 
 app.get('/cities/create', (req, res) => {
@@ -112,7 +120,7 @@ app.post('/cities',
             })
         }
         //on remplace le l'ajout par un inserte sur la base
-        await db.collection('cities').insertOne({
+        await City.create({
             name: req.body.city,
             uuid: uuidv4()
         })
@@ -123,7 +131,7 @@ app.post('/cities',
 // Route vers une ville spécifique selon son idc
 // On modifie la méthode findOneByID pour recevoir les données à partir de lUUID.
 app.get('/cities/:uuid', (req, res, next) => {
-    db.collection('cities').findOne({ uuid: req.params.uuid }).then((city) => {
+    City.findOne({ uuid: req.params.uuid }).then((city) => {
         if (city) {
             res.render('cities/city', { city: city })
         } else {
@@ -135,7 +143,7 @@ app.get('/cities/:uuid', (req, res, next) => {
 
 // Mise à jour d'un UUID ==> formulaire de mise à jour
 app.get('/cities/:uuid/update', (req, res) => {
-    db.collection('cities').findOne({ uuid: req.params.uuid }).then((city) => {
+    City.findOne({ uuid: req.params.uuid }).then((city) => {
         if (city) {
             res.render('cities/update.ejs', { city: city })
         } else {
@@ -144,40 +152,7 @@ app.get('/cities/:uuid/update', (req, res) => {
     })
 })
 
-// Mise à jour d'un UUID ==> traitement du formulaire et update de la base
-// app.post('/cities',
-//     body('city')
-//         .isLength({ min: 3 })
-//         .withMessage('City name must be at least 3 characters long'),
-//     async (req, res) => {
-//         const errors = validationResult(req)
-//         if (!errors.isEmpty()) {
-//             return res.status(422).render('cities/update.ejs', {
-//                 errors: errors.array(),
-
-//                 city: {
-//                     name: req.body.city,
-//                     uuid: req.params.uuid
-//                 }
-//             })
-//         }
-//         await db.collection('cities').updateOne({ uuid: req.params.uuid }, {
-//             $set: { name: req.body.city }
-//         })
-//         res.redirect('/cities')
-//     }
-// )
-
-app.get('/cities/:uuid/update', (req, res) => {
-    db.collection('cities').findOne({ uuid: req.params.uuid }).then((city) => {
-        if (city) {
-            res.render('cities/update', { city: city })
-        } else {
-            res.status(404).send('Error: No city found')
-        }
-    })
-})
-// Suppression d'un UUID
+// Update d'un UUID
 app.post('/cities/:uuid/update',
     body('city')
         .isLength({ min: 3 })
@@ -193,21 +168,13 @@ app.post('/cities/:uuid/update',
                 }
             })
         }
-        await db.collection('cities').updateOne({ uuid: req.params.uuid }, {
-            $set: { name: req.body.city }
-        })
+        await City.findOneAndUpdate({ uuid: req.params.uuid }, { name: req.body.city })
         res.redirect('/cities')
     }
 )
 
 app.post('/cities/:uuid/delete', async (req, res, next) => {
-    await db.collection('cities').deleteOne({ uuid: req.params.uuid }).then((response) => {
-        if (response.deletedCount === 1) {
-            res.redirect('/cities')
-        } else {
-            res.status(404).send('Error: No city found')
-        }
-    })
+    await City.findOneAndDelete({ uuid: req.params.uuid }, { name: req.body.city })
 })
 
 // Middleware captant l'erreur et affichant une page 404
