@@ -55,6 +55,7 @@ const { database } = require('./db/database');
 const City = require('./models/City');
 const Country = require('./models/Country');
 const Mayor = require('./models/Mayor');
+const { router } = require('./api/routes/cities-route');
 
 // Initialisation de la database
 database()
@@ -184,11 +185,19 @@ app.post('/cities/:uuid/delete', async (req, res, next) => {
     await City.findOneAndDelete({ uuid: req.params.uuid }, { name: req.body.city })
 })
 
+// Import des routes
+const cityRoutes = require('./api/routes/cities-route');
+
+// Utilisation de du middleware HTTP => JSON
+app.use(express.json());
+
+//Définition des routes avec le suffixe /api
+app.use('/api', cityRoutes);
+
 // Middleware captant l'erreur et affichant une page 404
 app.use((req, res) => {
     res.status(404).send('Error 404: Page not found');
 });
-
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
