@@ -11,119 +11,101 @@ const { v4: uuidv4 } = require('uuid');
 
 
 async function database() {
-
-    // Vidade des tables
     await Country.deleteMany()
     await City.deleteMany()
-    await Mayor.deleteMany()
-
-    /** OneToOne */
-    const dupont = new Mayor({
-        name: 'Jean Dupont',
-        uuid: uuidv4()
-    })
-    await dupont.save()
-    const marseille = new City({
-        name: 'Marseille',
-        uuid: uuidv4(),
-        mayor: dupont._id
-    })
-    await marseille.save()
-
-    await City.findOne({ name: 'Marseille' })
-        .populate('mayor')
-        .then((city) => {
-            console.log('City:', city)
-            console.log('Mayor:', city.mayor)
+    let sp = Country({ name: 'Spain', uuid: uuidv4(), europeanUnion: true });
+    await sp.save();
+    let fr = Country({ name: 'France', uuid: uuidv4(), europeanUnion: true });
+    await fr.save();
+    let uk = Country({ name: 'United Kingdom', uuid: uuidv4(), europeanUnion: false });
+    await uk.save();
+    let london = City({ name: 'London', uuid: uuidv4(), country: uk._id, population: 8900000 });
+    await london.save();
+    let paris = City({ name: 'Paris', uuid: uuidv4(), country: fr._id, population: 2200000 });
+    await paris.save();
+    let saintBrevin = City({ name: 'Saint-Brevin-les-Pins', uuid: uuidv4(), country: fr._id, population: 14000 });
+    await saintBrevin.save();
+    let valencia = City({ name: 'Valencia', uuid: uuidv4(), country: sp._id, population: 800000 });
+    await valencia.save();
+    sp.cities.push(valencia);
+    await sp.save();
+    fr.cities.push(paris);
+    await fr.save();
+    fr.cities.push(saintBrevin);
+    await fr.save();
+    uk.cities.push(london);
+    await uk.save();
+    const europeanUnion = await Country.find({ europeanUnion: true })
+    await City.find({ country: { $in: europeanUnion } })
+        .populate({
+            path: 'country',
+            select: 'name -_id'
         })
-        .catch((error) => {
-            console.log('Error:', error)
+        .select({
+            _id: 0,
+            name: 1,
+            country: 1
         })
-
-    dupont.city = marseille._id
-    await dupont.save()
-
-    await Mayor.findOne({ name: 'Jean Dupont' })
-        .populate('city')
-        .then((mayor) => {
-            console.log('Mayor:', mayor)
-            console.log('City:', mayor.city)
+        .then((cities) => {
+            console.log('Cities in EU:', cities)
         })
-        .catch((error) => {
-            console.log('Error:', error)
+    await City.aggregate([
+        { $lookup: { from: 'countries', localField: 'country', foreignField: '_id', as: 'country' } },
+        { $unwind: '$country' },
+        { $match: { 'country.europeanUnion': true } },
+        { $project: { _id: 0, country: '$country.name', name: 1 } },
+        { $sort: { population: -1 } },
+    ])
+        .then((cities) => {
+            console.log('Cities in EU:', cities)
         })
-    /** ManyToOne */
-    const france = new Country({
-        name: 'France',
-        uuid: uuidv4()
-    })
-    await france.save()
-    const niort = new City({
-        name: 'Niort',
-        uuid: uuidv4(),
-        country: france._id
-    })
-    await niort.save()
-    City.findOne({ name: 'Niort' })
+    await City.find({ population: { $gt: 1000000 } })
         .populate('country')
-        .then((city) => {
-            console.log('City:', city)
-            console.log('Country:', city.country)
+        .then((cities) => {
+            console.log('Countries having cities with population > 1000000:', cities.map((city) => city.country.name))
+        }
+        )
+    // cities having population less than 1000000 and in EU
+    await City.find({ population: { $lt: 1000000 }, country: { $in: europeanUnion } })
+        .populate({
+            path: 'country',
+            select: 'name -_id'
         })
-        .catch((error) => {
-            console.log('Error:', error)
+        .select({
+            _id: 0,
+            name: 1,
+            country: 1
         })
-    /** OneToMany */
-    const spain = new Country({
-        name: 'Spain',
-        uuid: uuidv4()
-    })
-    await spain.save()
-    const barcelona = new City({
-        name: 'Barcelona',
-        uuid: uuidv4(),
-    })
-    await barcelona.save()
-    spain.cities.push(barcelona)
-    await spain.save()
-    Country.findOne({ name: 'Spain' })
-        .populate('cities')
-        .then((country) => {
-            console.log('Country:', country)
+        .then((cities) => {
+            console.log('Cities having population less than 1000000 and in EU:', cities)
+        }
+        )
+    // sort cities by population
+    await City.find().sort({ population: -1 })
+        .then((cities) => {
+            console.log('Cities sorted by population:', cities)
+        }
+        )
+    // count population by country
+    await City.aggregate([
+        { $group: { _id: '$country', population: { $sum: '$population' } } },
+        { $lookup: { from: 'countries', localField: '_id', foreignField: '_id', as: 'country' } },
+        { $unwind: '$country' },
+        { $project: { _id: 0, country: '$country.name', population: 1 } }
+    ])
+        .then((cities) => {
+            console.log('Population by country:', cities)
         })
-        .catch((error) => {
-            console.log('Error:', error)
-        })
-    /** ManyToMany */
-    const rennes = new City({
-        name: 'Rennes',
-        uuid: uuidv4(),
-    })
-    await rennes.save()
-    const quimper = new City({
-        name: 'Quimper',
-        uuid: uuidv4(),
-    })
-    await quimper.save()
-    const nantes = new City({
-        name: 'Nantes',
-        uuid: uuidv4(),
-    })
-    await nantes.save()
-    rennes.sisterCities.push(quimper)
-    rennes.sisterCities.push(nantes)
-    await rennes.save()
-    quimper.sisterCities.push(rennes)
-    quimper.sisterCities.push(nantes)
-    await quimper.save()
-    City.findOne({ name: 'Rennes' })
-        .populate('sisterCities')
-        .then((city) => {
-            console.log('City:', city)
-            console.log('Sister cities:', city.sisterCities)
-        })
-        .catch((error) => {
-            console.log('Error:', error)
+    // count population by country that are over 1000000
+    await City.aggregate([
+        { $group: { _id: '$country', population: { $sum: '$population' } } },
+        { $lookup: { from: 'countries', localField: '_id', foreignField: '_id', as: 'country' } },
+        { $unwind: '$country' },
+        { $project: { _id: 0, country: '$country.name', population: 1 } },
+        { $match: { population: { $gt: 1000000 } } }
+    ])
+        .then((cities) => {
+            console.log('Population by country that are over 1000000:', cities)
         }
         )
 }
