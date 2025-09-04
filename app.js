@@ -40,6 +40,7 @@ client.connect()
 // Instanciation de mongoose
 const mongoose = require('mongoose');
 
+
 // Connexion avec MongoDB
 mongoose.connect('mongodb://127.0.0.1:27017/test').then(() => {
     console.log('Connected to MongoDB');
@@ -47,10 +48,16 @@ mongoose.connect('mongodb://127.0.0.1:27017/test').then(() => {
     console.log('Error connecting to MongoDB:', err);
 });
 
-// Création du modèle City
-const City = mongoose.model('City', { name: String, uuid: String });
+// import de la fonction database()
+const { database } = require('./db/database');
 
-const cities = ['Nantes', 'Paris', 'Quimper']
+// import des modèles
+const City = require('./models/City');
+const Country = require('./models/Country');
+const Mayor = require('./models/Mayor');
+
+// Initialisation de la database
+database()
 
 // Configuration du moteur de vue
 app.set("view engine", "ejs");
