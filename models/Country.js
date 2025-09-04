@@ -7,7 +7,9 @@ const countrySchema = new mongoose.Schema({
     cities: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'City'
-    }]
+    }],
+    // Ajout d'un attribut
+    europeanUnion: Boolean
 });
 
 // Export d'un objet pour intéragir avec la base
