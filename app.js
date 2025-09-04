@@ -13,6 +13,32 @@ app.use(express.urlencoded({ extended: true }))
 // Ajout express-validator
 const { body, validationResult } = require('express-validator')
 
+// Ajout MongoDB
+const { v4: uuidv4 } = require('uuid');
+const { MongoClient } = require('mongodb');
+
+// Ouverture Connexion à mongodb
+
+// Adresse d'accès à la base de données, si elle n'existe pas, elle est créée
+const uri = "mongodb://localhost:27017/cities_app";
+
+// Instanciation d'un client qui exécutera les requêtes
+const client = new MongoClient(uri, { useNewUrlParser: true });
+
+// Instanciation de la connexion sur la base de données à partir du client
+const db = client.db("cities_app");
+
+// Test de connexion à partir d'une promesse
+client.connect()
+    .then(() => {
+        console.log('Connected successfully to server');
+    })
+    .catch((err) => {
+        console.log('Error connecting to server:', err);
+    });
+
+
+
 const cities = ['Nantes', 'Paris', 'Quimper']
 
 
@@ -56,8 +82,13 @@ app.get('/', (req, res) => {
 
 // Route vers la liste de villes
 app.get('/cities', (req, res) => {
-    //On redirige vers la page cities/index.ejs en passant en paramètre la liste de villes
-    res.render('cities', { cities: cities })
+    db.collection('cities')
+        .find()
+        .toArray()
+        .then((cities) => {
+            //On redirige vers la page cities/index.ejs en passant en paramètre la liste de villes
+            res.render('cities', { cities: cities })
+        })
 })
 
 // Modification de la méthode pour ajouter les contraintes de validation sur
