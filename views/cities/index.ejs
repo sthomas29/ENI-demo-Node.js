@@ -15,28 +15,15 @@
     <ul>
         <% cities.forEach((city)=> { %>
             <li>
-                <%= city %>
+                <a href="/cities/<%= city.uuid %>">
+                    <%= city.name %>
+                </a>
             </li>
             <% }) %>
     </ul>
     <!-- views/index.ejs -->
-    <h1>Add a city</h1>
-    <form method="post" action="/cities">
-        <div class="mb-3">
-            <label for="city" class="form-label">City</label>
-            <!-- <input type="text" class="form-control" id="city" name="city" /> -->
 
-            <input type="text" class=" form-control
-                        <%= typeof errors !== 'undefined' && errors.length > 0 ? 'is-invalid': ''
-                        %>" id="city" name="city" value="<%= typeof city !== 'undefined' ? city : '' %>" />
-
-            <div class="invalid-feedback">
-                <% if (typeof errors !=='undefined' && errors.length> 0) { %> <%= errors[0].msg %>
-                        <% } %>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
+    <a href="/cities/create" class="btn btn-primary">Create</a>
 </body>
 
 </html>
