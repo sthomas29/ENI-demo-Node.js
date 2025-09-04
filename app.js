@@ -4,25 +4,61 @@ const express = require('express')
 const app = express()
 const port = 3000
 
+// Récupération du path
+const path = require("path");
+
+// Définition de l'encodeur JSON ==> Extended=true autorise l'encodage d'objet complexe
+app.use(express.urlencoded({ extended: true }))
+
 const cities = ['Nantes', 'Paris', 'Quimper']
 
 
-// Ajout du middleware
+// Configuration du moteur de vue
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
+// Ajout d'un middleware de démo
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url} - ${req.get('User-Agent')}`)
     next()
 })
 
+// Ajout middleware CSP pour empêcher le blocage des requêtes par le navigateur web
+app.use((req, res, next) => {
+    res.setHeader(
+        "Content-Security-Policy",
+        [
+            // Tout charger depuis le même domaine (self)
+            "default-src 'self'",
+
+            // autorise scripts et les styles locaux + inline (utile en dev) et les CDN
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+
+            // Images locales ou en base64
+            "img-src 'self' data:",
+
+            // autorise fetch/XHR vers ton API locale (depuis l'extérieur par ex. avec les CDN)
+            "connect-src 'self' http://localhost:3000 https://cdn.jsdelivr.net",
+        ].join("; ")
+    );
+    next();
+});
+// On laisse la route par défaut en 1er
 app.get('/', (req, res) => {
     console.log("Route par défaut");
-
     res.send('Hello World !')
 })
 
-
-// Route vers la liste de ville
+// Route vers la liste de villes
 app.get('/cities', (req, res) => {
-    res.send(cities.join(', '))
+    //On redirige vers la page cities/index.ejs en passant en paramètre la liste de villes
+    res.render('cities', { cities: cities })
+})
+
+app.post('/cities', (req, res) => {
+    cities.push(req.body.city)
+    res.redirect('/cities')
 })
 
 // Route vers une ville spécifique selon son id
@@ -37,7 +73,6 @@ app.get('/cities/:id', (req, res, next) => {
 app.use((req, res) => {
     res.status(404).send('Error 404: Page not found');
 });
-
 
 
 app.listen(port, () => {
