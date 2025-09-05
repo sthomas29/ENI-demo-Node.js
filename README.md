@@ -59,3 +59,7 @@ mongoDB déclenche des alertes de sécurité sur selinux. Pour les désactiver s
 ## Installation JWT
 * npm install jsonwebtoken
 * npm install dotenv
+
+## Install Swagger UI
+* npm install swagger-autogen --save-dev
+* npm install swagger-ui-express
