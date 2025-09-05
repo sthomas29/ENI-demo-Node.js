@@ -258,19 +258,63 @@ app.post('/authentication_token',
     }
 )
 
-
 /********************************************************************/
-/*      Middleware captant l'erreur et affichant une page 404       */
+/*                     Implémentation de Swagger                    */
 /********************************************************************/
 
-app.use((req, res) => {
-    res.status(404).send('Error 404: Page not found');
-});
+// implémentation de swagger-autogen pour la génération automatique de
+// la documentation à partir de toutes les routes de l'app.
+const swaggerAutogen = require('swagger-autogen')()
 
-/*********************************************************/
-/*                  Lancement du Server                  */
-/*********************************************************/
+// Fichier de stockage de la structure du site
+const outputFile = './swagger_output.json'
 
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+// Implémentation de l'interface graphique de Swagger
+const swaggerUi = require('swagger-ui-express');
+
+// Génération de la documentation dans une promessede
+swaggerAutogen(outputFile, ['./app.js']).then(() => {
+
+    // On lit le fichier seulement une fois qu'il est généré
+    // par swaggerAutogen()
+    const swaggerDocument = require('./swagger_output.json');
+
+    // Définit la liste des middleware à charger pour la route '/docs'
+    app.use(
+        // route pour l'accès à la documentation générée par Swagger
+        '/docs',
+
+        // Middleware lançant un serveur de fichiers statiques
+        // pour l'interface Swagger
+        swaggerUi.serve,
+
+        // Charge dans l'interface statiques le JSON généré auparavant.
+        swaggerUi.setup(swaggerDocument));
+
+
+    /********************************************************************
+        On rajoute dans la promesse : 
+            
+            - Le MiddleWare pour les page 404
+            - Le lancement du server node
+
+        L'objectif est d'attendre que le fichier json et la route /docs
+        soit bien chargés/générés avant lancement du serveur.
+    *********************************************************************/
+
+    /********************************************************************/
+    /*      Middleware captant l'erreur et affichant une page 404       */
+    /********************************************************************/
+    app.use((req, res) => {
+        res.status(404).send('Error 404: Page not found');
+    });
+
+    /********************************************************************/
+    /*                        Lancement du Server                       */
+    /********************************************************************/
+    app.listen(port, () => {
+        console.log(`Example app listening on port ${port}`)
+    })
 })
+
+
