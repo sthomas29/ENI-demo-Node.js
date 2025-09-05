@@ -10,8 +10,12 @@ const path = require("path");
 // Définition de l'encodeur JSON ==> Extended=true autorise l'encodage d'objet complexe
 app.use(express.urlencoded({ extended: true }))
 
+
+// Ajout JWT
+const checkTokenMiddleware = require('./auth-JWT')
+
 // Ajout express-validator
-const { body, validationResult } = require('express-validator')
+const { body, validationResult, check } = require('express-validator')
 
 // Ajout MongoDB
 const { v4: uuidv4 } = require('uuid');
@@ -57,8 +61,16 @@ const Country = require('./models/Country');
 const Mayor = require('./models/Mayor');
 const { router } = require('./api/routes/cities-route');
 
+/*********************************************************/
+/*           Initialisation de la base MongoDB           */
+/*********************************************************/
+
 // Initialisation de la database
 database()
+
+/*********************************************************/
+/*           Configuration des middlewares                */
+/*********************************************************/
 
 // Configuration du moteur de vue
 app.set("view engine", "ejs");
@@ -92,6 +104,10 @@ app.use((req, res, next) => {
     next();
 });
 
+/*********************************************************/
+/*              Définition des routes                    */
+/*********************************************************/
+
 // On laisse la route par défaut en 1er
 app.get('/', (req, res) => {
     console.log("Route par défaut");
@@ -116,6 +132,7 @@ app.post('/cities',
     body('city')
         .isLength({ min: 3 })
         .withMessage('City name must be at least 3 characters long'),
+
     // Routage requête en encapsulant les erreurs éventuelles
     // On transforme en requête asynchrone pour prendre en compte les délais de
     // connexion vers la base de données
@@ -127,7 +144,8 @@ app.post('/cities',
                 city: req.body.city
             })
         }
-        //on remplace le l'ajout par un inserte sur la base
+
+        // On remplace l'ajout par un insert sur la base
         await City.create({
             name: req.body.city,
             uuid: uuidv4()
@@ -147,7 +165,6 @@ app.get('/cities/:uuid', (req, res, next) => {
         }
     })
 })
-
 
 // Mise à jour d'un UUID ==> formulaire de mise à jour
 app.get('/cities/:uuid/update', (req, res) => {
@@ -185,6 +202,10 @@ app.post('/cities/:uuid/delete', async (req, res, next) => {
     await City.findOneAndDelete({ uuid: req.params.uuid }, { name: req.body.city })
 })
 
+/*********************************************************/
+/*                 Mise en oeuvre de l'API               */
+/*********************************************************/
+
 // Import des routes
 const cityRoutes = require('./api/routes/cities-route');
 
@@ -194,10 +215,61 @@ app.use(express.json());
 //Définition des routes avec le suffixe /api
 app.use('/api', cityRoutes);
 
-// Middleware captant l'erreur et affichant une page 404
+
+/*********************************************************/
+/*                 Authentification JWT                  */
+/*********************************************************/
+
+const jwt = require('jsonwebtoken');
+const { SECRET } = require('./env');
+
+const users = [
+    {
+        id: 1,
+        username: 'admin',
+        password: 'admin'
+    }
+]
+app.post('/authentication_token',
+    check('username').isLength({ min: 2 }).withMessage('must be at least 2 chars long'),
+    check('password').isLength({ min: 2 }).withMessage('must be at least 2 chars long'),
+
+    async (req, res, next) => {
+
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            return res.status(422).json({ errors: errors.array() });
+        }
+        const user = users.find(u => u.username === req.body.username && u.password === req.body.password)
+        if (!user) {
+            return res.status(400).json({ message: 'Error. Wrong login or password' })
+        }
+
+        // Création du token à partir des SECRETS et données fournies
+        // dans la requête POST
+        const token = jwt.sign(
+            { id: user.id, username: user.username },
+            SECRET,
+            { expiresIn: '3 hours' })
+
+        // Return le TOKEN    
+        return res.json({ access_token: token })
+    }
+)
+
+
+/********************************************************************/
+/*      Middleware captant l'erreur et affichant une page 404       */
+/********************************************************************/
+
 app.use((req, res) => {
     res.status(404).send('Error 404: Page not found');
 });
+
+/*********************************************************/
+/*                  Lancement du Server                  */
+/*********************************************************/
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
