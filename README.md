@@ -56,3 +56,8 @@ npm i uuid
 
 
 ## Installation Mongoose
+npm install mongoose
+
+## Installation JWT
+npm install jsonwebtoken
+npm install dotenv
