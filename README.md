@@ -48,16 +48,14 @@ mongoDB déclenche des alertes de sécurité sur selinux. Pour les désactiver s
 >>>> semodule -X 300 -i my-ftdc.pp
 
 ### 5- Installation de mongoDB sur le projet
-
 * npm i mongodb
 
 ### 6- Installation dépendance UUID
-npm i uuid
+* npm i uuid
 
-
-## Installation Mongoose
-npm install mongoose
+## Installation Mongoose
+* npm install mongoose
 
 ## Installation JWT
-npm install jsonwebtoken
-npm install dotenv
+* npm install jsonwebtoken
+* npm install dotenv
