@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
+const { v4: uuidv4 } = require('uuid');
+
 
 const City = require('../../models/City');
 const Country = require('../../models/Country');
 const Mayor = require('../../models/Mayor');
+const checkTokenMiddleware = require('../../auth-JWT');
 
 
 router.get('/cities', (req, res) => {
@@ -23,9 +26,14 @@ router.get('/cities/:uuid', (req, res, next) => {
     })
 })
 
-router.post('/cities', check('name')
-    .isLength({ min: 3 })
-    .withMessage('City name must be at least 3 characters long'),
+router.post('/cities',
+
+    // Vérif Token
+    checkTokenMiddleware,
+
+    check('name')
+        .isLength({ min: 3 })
+        .withMessage('City name must be at least 3 characters long'),
     async (req, res) => {
         const errors = validationResult(req)
         if (!errors.isEmpty()) {
