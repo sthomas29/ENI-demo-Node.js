@@ -2,3 +2,5 @@ node_modules/
 config-sth/
 
 .env
+
+.idea/
