@@ -29,6 +29,10 @@ const uri = "mongodb://localhost:27017/cities_app";
 // Instanciation d'un client qui exécutera les requêtes
 const client = new MongoClient(uri, { useNewUrlParser: true });
 
+/* La fonction 'userNewUrlParser: true' est dépréciée dans les dernières version de MongoDB
+* Elle est juste à supprimer au moment de l'instanciation */
+// const client = new MongoClient(uri);
+
 // Instanciation de la connexion sur la base de données à partir du client
 const db = client.db("cities_app");
 
